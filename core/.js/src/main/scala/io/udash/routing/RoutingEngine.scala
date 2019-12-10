@@ -34,6 +34,29 @@ class RoutingEngine[HierarchyRoot >: Null <: GState[HierarchyRoot] : PropertyCre
    * @param url URL to be resolved
    */
   def handleUrl(url: Url, fullReload: Boolean = false): Try[Unit] = Try {
+    @tailrec
+    def getStatePath(forState: Option[HierarchyRoot], acc: List[HierarchyRoot] = Nil): List[HierarchyRoot] =
+      forState match {
+        case Some(state) => getStatePath(state.parentState, state :: acc)
+        case None => acc
+      }
+
+    @tailrec
+    def getUpdatablePathSize(path: List[HierarchyRoot], oldPath: List[HierarchyRoot], acc: Int = 0): Int =
+      (path, oldPath) match {
+        case (head1 :: tail1, head2 :: tail2)
+          if viewFactoryRegistry.factoryFor(head1) == viewFactoryRegistry.factoryFor(head2) =>
+          getUpdatablePathSize(tail1, tail2, acc + 1)
+        case _ => acc
+      }
+
+    //todo unify with state removal?
+    def cleanup(state: Iterable[(View, Presenter[_])]): Unit =
+      state.foreach { case (view, presenter) =>
+        Try(view.onClose()).failed.foreach(logger.warn("Error closing view.", _))
+        Try(presenter.onClose()).failed.foreach(logger.warn("Error closing presenter.", _))
+      }
+
     if (fullReload) {
       cleanup(statesMap.values)
       statesMap.clear()
@@ -66,7 +89,11 @@ class RoutingEngine[HierarchyRoot >: Null <: GState[HierarchyRoot] : PropertyCre
       statesMap ++= oldViewFactories
 
       val viewsToLeave = statesMap.values.map(_._1).toList
-      val views = resolvePath(diffPath.slice(toUpdateStatesSize, diffPath.size))
+      val views = diffPath.slice(toUpdateStatesSize, diffPath.size).map { state =>
+        val (view, presenter) = viewFactoryRegistry.factoryFor(state).create()
+        statesMap(state) = (view, presenter)
+        view
+      }
       (viewsToLeave, views)
     }
 
@@ -88,55 +115,11 @@ class RoutingEngine[HierarchyRoot >: Null <: GState[HierarchyRoot] : PropertyCre
    * @param callback Callback getting StateChangeEvent as arguments
    */
   def onStateChange(callback: StateChangeEvent[HierarchyRoot] => Any): Registration =
-    onStateChange({
-      case x => callback(x)
-    }: callbacks.CallbackType)
-
-  /**
-   * Register a callback for the routing state change.
-   *
-   * The callbacks are executed in order of registration. Registration operations don't preserve callbacks order.
-   * Each callback is executed once, exceptions thrown in callbacks are swallowed.
-   *
-   * @param callback Callback (PartialFunction) getting StateChangeEvent as arguments
-   */
-  def onStateChange(callback: callbacks.CallbackType): Registration =
-    callbacks.register(callback)
+    callbacks.register { case x => callback(x) }
 
   /** @return Current routing state */
   def currentState: HierarchyRoot = currentStateProp.get
 
   /** @return Property reflecting current routing state */
   def currentStateProperty: ReadableProperty[HierarchyRoot] = currentStateProp.readable
-
-  @tailrec
-  private def getStatePath(forState: Option[HierarchyRoot], acc: List[HierarchyRoot] = Nil): List[HierarchyRoot] = forState match {
-    case Some(state) => getStatePath(state.parentState, state :: acc)
-    case None => acc
-  }
-
-  @tailrec
-  private def getUpdatablePathSize(path: List[HierarchyRoot], oldPath: List[HierarchyRoot], acc: Int = 0): Int = {
-    (path, oldPath) match {
-      case (head1 :: tail1, head2 :: tail2)
-        if viewFactoryRegistry.factoryFor(head1) == viewFactoryRegistry.factoryFor(head2) =>
-        getUpdatablePathSize(tail1, tail2, acc + 1)
-      case _ => acc
-    }
-  }
-
-  private def cleanup(state: Iterable[(View, Presenter[_])]): Unit = {
-    state.foreach { case (view, presenter) =>
-      Try(view.onClose()).failed.foreach(logger.warn("Error closing view.", _))
-      Try(presenter.onClose()).failed.foreach(logger.warn("Error closing presenter.", _))
-    }
-  }
-
-  private def resolvePath(path: List[HierarchyRoot]): List[View] = {
-    path.map { state =>
-      val (view, presenter) = viewFactoryRegistry.factoryFor(state).create()
-      statesMap(state) = (view, presenter)
-      view
-    }
-  }
 }
