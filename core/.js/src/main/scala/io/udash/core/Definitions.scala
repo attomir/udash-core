@@ -1,13 +1,14 @@
 package io.udash.core
 
+import com.avsystem.commons.misc.CaseMethods
 import io.udash.properties.HasModelPropertyCreator
 import org.scalajs.dom._
 import scalatags.generic.Modifier
 
 /**
-  * Url wrapper - just for avoiding strings.
-  */
-case class Url(value: String) extends AnyVal
+ * Url wrapper - just for avoiding strings.
+ */
+final case class Url(value: String) extends AnyVal with CaseMethods
 object Url extends HasModelPropertyCreator[Url]
 
 /**
@@ -103,5 +104,5 @@ trait State {
   * It is used to map [[State]] to [[ViewFactory]].
   */
 trait ViewFactoryRegistry[HierarchyRoot <: State] {
-  def matchStateToResolver(state: HierarchyRoot): ViewFactory[_ <: HierarchyRoot]
+  def factoryFor(state: HierarchyRoot): ViewFactory[_ <: HierarchyRoot]
 }

@@ -36,7 +36,7 @@ class AuthApplicationTest extends AsyncUdashFrontendTest with AuthTestUtils with
     "should redirect after UnauthorizedException or UnauthenticatedException throw" in {
       implicit val user: UserCtx = UnauthenticatedUser
       val vfr = new ViewFactoryRegistry[TestStates] {
-        override def matchStateToResolver(state: TestStates): ViewFactory[_ <: TestStates] =
+        override def factoryFor(state: TestStates): ViewFactory[_ <: TestStates] =
           state match {
             case SomeState => new TestVF(new AuthPresenter[TestStates](P1) {})
             case SecondState => new TestVF(new AuthPresenter[TestStates](AllowAll, requireAuthenticated = true) {})
@@ -63,7 +63,7 @@ class AuthApplicationTest extends AsyncUdashFrontendTest with AuthTestUtils with
     "not loop if unauthorized redirect throws exception" in {
       implicit val user: User = User(Set.empty)
       val vfr = new ViewFactoryRegistry[TestStates] {
-        override def matchStateToResolver(state: TestStates): ViewFactory[_ <: TestStates] =
+        override def factoryFor(state: TestStates): ViewFactory[_ <: TestStates] =
           state match {
             case SomeState => new TestVF(new AuthPresenter[TestStates](P1) {})
             case SecondState => new TestVF(new AuthPresenter[TestStates](P2) {})

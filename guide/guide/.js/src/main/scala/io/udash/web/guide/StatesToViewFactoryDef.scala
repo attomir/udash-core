@@ -9,7 +9,7 @@ import io.udash.web.guide.views.frontend.{FrontendFormsViewFactory, FrontendProp
 import io.udash.web.guide.views.rpc.{RpcIntroViewFactory, RpcServerClientViewFactory, _}
 
 class StatesToViewFactoryDef extends ViewFactoryRegistry[RoutingState] {
-  def matchStateToResolver(state: RoutingState): ViewFactory[_ <: RoutingState] =
+  def factoryFor(state: RoutingState): ViewFactory[_ <: RoutingState] =
     state match {
       case RootState => RootViewFactory
       case ContentState => ContentViewFactory

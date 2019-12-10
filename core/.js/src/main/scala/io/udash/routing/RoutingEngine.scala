@@ -119,7 +119,7 @@ class RoutingEngine[HierarchyRoot >: Null <: GState[HierarchyRoot] : PropertyCre
   private def getUpdatablePathSize(path: List[HierarchyRoot], oldPath: List[HierarchyRoot], acc: Int = 0): Int = {
     (path, oldPath) match {
       case (head1 :: tail1, head2 :: tail2)
-        if viewFactoryRegistry.matchStateToResolver(head1) == viewFactoryRegistry.matchStateToResolver(head2) =>
+        if viewFactoryRegistry.factoryFor(head1) == viewFactoryRegistry.factoryFor(head2) =>
         getUpdatablePathSize(tail1, tail2, acc + 1)
       case _ => acc
     }
@@ -134,7 +134,7 @@ class RoutingEngine[HierarchyRoot >: Null <: GState[HierarchyRoot] : PropertyCre
 
   private def resolvePath(path: List[HierarchyRoot]): List[View] = {
     path.map { state =>
-      val (view, presenter) = viewFactoryRegistry.matchStateToResolver(state).create()
+      val (view, presenter) = viewFactoryRegistry.factoryFor(state).create()
       statesMap(state) = (view, presenter)
       view
     }
